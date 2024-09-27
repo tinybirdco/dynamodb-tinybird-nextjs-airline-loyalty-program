@@ -1,101 +1,69 @@
-import Image from "next/image";
+'use client';
+
+import NavBar from "./components/navbar";
+import Search from "./components/search";
+import { Reservation } from "./lib/definitions";
+import useFetchApi from "./lib/fetch";
+import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { FlightList, FlightDetails } from "./components/flight-displays";
+import { StatusProgress } from "./components/charts";
+
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const searchParams = useSearchParams();
+    const searchValue = searchParams.get('query')?.toUpperCase();
+    console.log('Searching for: ', searchValue);
+    const baseUrl = process.env.NEXT_PUBLIC_TINYBIRD_BASE_URL + '/pipes/get_reservations.json?token=' + process.env.NEXT_PUBLIC_TINYBIRD_ADMIN_TOKEN;
+    const [url, setUrl] = useState(baseUrl + '&search_value=' + searchValue);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+    const token = process.env.NEXT_PUBLIC_TINYBIRD_STATIC_READ_TOKEN ?? '';
+const apiurl = process.env.NEXT_PUBLIC_TINYBIRD_API_BASE_URL ?? '';
+  console.log(token,apiurl);
+    const { data: reservations } = useFetchApi<Reservation[]>(url);
+    console.log(reservations);
+
+    useEffect(() => {
+        const updatedUrl = `${baseUrl}&search_value=${searchValue}`
+        setUrl(updatedUrl)
+    }, [searchValue, baseUrl])
+
+  return (
+      <div>
+        <NavBar />
+          <div className={'flex flex-1 mx-auto justify-center items-center w-full max-w-screen-xl max-h-full min-h-1100px py-8'}>
+              <div className='w-4/5 space-y-4'>
+                  <Search placeholder={"Search for a record locator or member id"} />
+                  <div className='min-h-1/6 h-auto h-min-16 rounded-md bg-white shadow-tinybird-emerald shadow-md p-5 space-y-3'>
+
+                        {/* Conditionally display "Member Id" or "No results found" */}
+                        {searchValue && searchValue.length === 8 && reservations && reservations.length > 0 ? (
+                          <p className='font-bold text-xl mb-4'>Reservations for Member {searchValue}</p>
+                        ) : searchValue && reservations && reservations.length === 0 ? (
+                          <p>No results found.</p>
+                        ) : null} {/* Render nothing if no search or results are loading */}
+
+                      {/* Display flight list or flight details depending on search */}
+                      {reservations?.map((reservation: Reservation) => (
+                          !(searchValue && searchValue.length === 6) ? (
+                            <>
+                              <FlightList key={reservation.RecordLocator} reservation={reservation} />
+                              
+                            </>
+                          ) : (
+                              <FlightDetails key={reservation.RecordLocator} reservation={reservation} />
+                          )
+                      ))}
+                  </div>
+
+                  {/* Display progress chart when reservations exist and member was searched */}
+                  {searchValue && searchValue.length === 8 && reservations && reservations.length > 0 && 
+                  <div className='min-h-1/6 h-auto h-min-16 rounded-md bg-white shadow-tinybird-emerald shadow-md p-5 space-y-3'>
+                    <StatusProgress member_id={searchValue} />
+                  </div>}
+              </div>
+          </div>
+      </div>
   );
 }

@@ -1,0 +1,77 @@
+DESCRIPTION >
+	Calculates stats for a member
+
+
+TOKEN "aggregate_stats_endpoint_read_1369" READ
+
+NODE get_reservations_for_member
+SQL >
+
+    %
+    SELECT
+      FlightDate,
+      OriginAirport,
+      DestinationAirport,
+      TotalFare
+    FROM dynamodb_airline_reservation
+    WHERE (RecordLocator, _timestamp) IN 
+    (
+        SELECT 
+            RecordLocator,
+            max(_timestamp)
+        FROM dynamodb_airline_reservation
+        WHERE MemberId = {{String(member_id)}}
+        GROUP BY RecordLocator
+    )
+    ORDER BY FlightDate asc
+
+
+
+NODE get_coordinates
+SQL >
+
+    %
+    SELECT
+      res.FlightDate as date,
+      res.OriginAirport as origin,
+      port1.city_name as origin_city,
+      port1.latitude as lat1,
+      port1.longitude as lon1,
+      res.DestinationAirport as destination,
+      port2.city_name as destination_city,
+      port2.latitude as lat2,
+      port2.longitude as lon2,
+      res.TotalFare as fare
+    FROM get_reservations_for_member res
+    JOIN airports port1 ON res.OriginAirport = port1.code
+    JOIN airports port2 ON res.DestinationAirport = port2.code
+
+
+
+NODE calculate_miles_per_reservation
+SQL >
+
+    SELECT
+      date,
+      origin,
+      origin_city,
+      destination,
+      destination_city,
+      fare,
+      round(geoDistance(lon1, lat1, lon2, lat2)/1609) as distance_mi
+    FROM get_coordinates
+
+
+
+NODE endpoint
+SQL >
+
+    SELECT
+      round(SUM(CASE WHEN date < now() THEN distance_mi ELSE 0 END)) as past_miles,
+      round(SUM(CASE WHEN date > now() THEN distance_mi ELSE 0 END)) as future_miles,
+      round(SUM(CASE WHEN date < now() THEN fare ELSE 0 END)) as past_spend,
+      round(SUM(CASE WHEN date > now() THEN fare ELSE 0 END)) as future_spend,
+      count(distinct destination) + count(distinct origin) as airports_visisted
+    FROM calculate_miles_per_reservation
+
+
